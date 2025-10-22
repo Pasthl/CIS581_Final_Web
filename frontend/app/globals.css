@@ -1,4 +1,4 @@
-/* 基础浅绿色主题 */
+/* Light green theme with hero styling */
 :root {
   --bg: #f3fbf6;         /* very light green */
   --card: #ffffff;       /* cards */
@@ -7,6 +7,8 @@
   --text: #0f172a;       /* slate-900 */
   --muted: #475569;      /* slate-600 */
   --border: #e5f4eb;     /* light border */
+  --gradient-start: #2dd4bf; /* teal */
+  --gradient-end: #10b981;   /* emerald */
 }
 
 * { box-sizing: border-box; }
@@ -112,4 +114,413 @@ h2 { font-size: 20px; margin: 0 0 8px; color: var(--muted); }
 .label {
   font-size: 13px;
   color: var(--muted);
+}
+
+/* Hero Section Styles */
+.hero-card {
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.05) 0%, rgba(16, 185, 129, 0.08) 100%);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 80px 40px;
+  text-align: center;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 20px 40px rgba(57,183,124,0.08);
+  margin-top: 40px;
+}
+
+.hero-title {
+  font-size: 56px;
+  font-weight: 800;
+  margin: 0 0 20px;
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.5px;
+}
+
+.hero-subtitle {
+  font-size: 20px;
+  color: var(--muted);
+  max-width: 600px;
+  margin: 0 auto 40px;
+  line-height: 1.6;
+}
+
+/* Creative Demo Button */
+.demo-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 32px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(45, 212, 191, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.demo-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.5s;
+}
+
+.demo-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(45, 212, 191, 0.4);
+}
+
+.demo-button:hover::before {
+  left: 100%;
+}
+
+.demo-button:active {
+  transform: translateY(0);
+}
+
+.button-arrow {
+  font-size: 24px;
+  transition: transform 0.3s ease;
+  display: inline-block;
+}
+
+.demo-button:hover .button-arrow {
+  transform: translateX(4px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hero-card {
+    padding: 60px 24px;
+  }
+
+  .hero-title {
+    font-size: 40px;
+  }
+
+  .hero-subtitle {
+    font-size: 18px;
+  }
+
+  .demo-button {
+    font-size: 16px;
+    padding: 14px 28px;
+  }
+}
+
+/* Demo Page Styles */
+.demo-header-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(57,183,124,0.06);
+}
+
+.demo-title {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.demo-description {
+  font-size: 16px;
+  color: var(--muted);
+  margin: 0 0 24px;
+}
+
+.demo-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Custom File Upload Button */
+.file-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  color: white;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(45, 212, 191, 0.25);
+}
+
+.file-upload-label:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(45, 212, 191, 0.35);
+}
+
+.file-upload-label:active {
+  transform: translateY(0);
+}
+
+.file-input {
+  display: none;
+}
+
+.upload-icon {
+  font-size: 18px;
+}
+
+/* Clear Button */
+.clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.clear-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.clear-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.clear-icon {
+  font-size: 16px;
+}
+
+/* File Info Display */
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--accent-soft);
+  border-radius: 12px;
+  color: var(--text);
+}
+
+.file-icon {
+  font-size: 16px;
+}
+
+.file-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Preview Cards */
+.preview-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(57,183,124,0.06);
+  transition: all 0.3s ease;
+}
+
+.preview-card:hover {
+  box-shadow: 0 4px 16px rgba(57,183,124,0.1);
+  transform: translateY(-2px);
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.03) 0%, rgba(16, 185, 129, 0.05) 100%);
+}
+
+.preview-badge {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 6px 12px;
+  background: var(--accent-soft);
+  border-radius: 8px;
+}
+
+.preview-badge.denoised {
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.2), rgba(16, 185, 129, 0.2));
+}
+
+.coming-soon {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 4px 10px;
+  background: var(--bg);
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* Image Container */
+.image-container {
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  background: var(--bg);
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 500px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  min-height: 300px;
+  background: var(--bg);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Status Messages */
+.status-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-top: 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.status-message.processing {
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.1), rgba(16, 185, 129, 0.1));
+  border: 1px solid var(--accent-soft);
+  color: var(--accent);
+}
+
+.status-message.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #dc2626;
+}
+
+.status-message.success {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #16a34a;
+}
+
+.status-icon {
+  font-size: 16px;
+}
+
+/* Processing Badge */
+.processing-badge {
+  font-size: 11px;
+  color: var(--accent);
+  padding: 4px 8px;
+  background: var(--accent-soft);
+  border-radius: 6px;
+  font-weight: 600;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Loading Animation */
+.empty-icon.loading {
+  animation: rotate 2s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Disabled State for Upload Button */
+.file-upload-label:has(input:disabled) {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive Demo Page */
+@media (max-width: 768px) {
+  .demo-header-card {
+    padding: 24px;
+  }
+
+  .demo-title {
+    font-size: 24px;
+  }
+
+  .demo-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .file-upload-label,
+  .clear-btn {
+    justify-content: center;
+  }
+
+  .preview-card {
+    margin-bottom: 16px;
+  }
+
+  .status-message {
+    font-size: 13px;
+  }
 }

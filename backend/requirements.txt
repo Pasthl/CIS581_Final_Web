@@ -1,0 +1,15 @@
+# Web Framework
+Flask==3.0.0
+flask-cors==4.0.0
+Werkzeug==3.0.1
+
+# Deep Learning (CPU-only version for lighter install)
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Image Processing
+Pillow>=10.0.0
+numpy>=1.24.0
+
+# Optional: For better performance
+# scikit-image>=0.22.0  # If you need additional image processing
