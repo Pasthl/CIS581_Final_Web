@@ -17,6 +17,10 @@ storage/outputs/*
 !storage/uploads/.gitkeep
 !storage/outputs/.gitkeep
 
+# Test images
+testimage/*
+!testimage/README.txt
+
 # IDE
 .vscode/
 .idea/

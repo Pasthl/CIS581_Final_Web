@@ -1,15 +1,17 @@
-# Pixel Revival - AI Image Processing Web App
+# Pixel Revival
 
 CIS5810 - Fall25 Final Project
+
 **Authors**: Ann Hua, Livia Yuan
 
-A full-stack web application for AI-powered image processing. The project focuses on **image deblurring and enhancement**, with EDSR-based super-resolution as a post-processing step.
+A full-stack web application for image processing. The project focuses on **image deblurring and enhancement**, with deblurring algorithm as main process, EDSR-based super-resolution as a post-processing step.
 
 ## Project Overview
 
 This application is designed for:
+
 1. **Primary Goal**: Image deblurring (currently in research/development)
-2. **Post-processing**: EDSR 4x super-resolution for enhanced image quality
+2. **Post-processing**: EDSR super-resolution for enhanced image quality
 3. **Pipeline**: Blur → Deblur (main processing) → Super-resolution (EDSR)
 
 The EDSR module implemented here serves as the final enhancement stage after the main deblurring algorithm.
@@ -49,6 +51,7 @@ The EDSR module implemented here serves as the final enhancement stage after the
 ```
 
 **Key Points**:
+
 - Frontend (port 3000): User interface, runs in browser
 - Backend (port 5000): API server, runs on your machine/server
 - Communication: Frontend makes HTTP requests to backend
@@ -59,7 +62,6 @@ The EDSR module implemented here serves as the final enhancement stage after the
 - 🎨 Modern, responsive web interface
 - 🖼️ Image upload and real-time preview
 - ✨ EDSR 4x super-resolution (post-processing)
-- 🚀 CPU-optimized inference
 - 🌐 Full-stack: Next.js frontend + Flask backend
 - 📊 Processing status and timing display
 
@@ -95,7 +97,8 @@ CIS581_Final_Web/
 
 ### Backend Setup
 
-1. Create virtual environment (recommended):
+1. Create **virtual** environment (recommended):
+
 ```bash
 cd backend
 python -m venv venv
@@ -103,16 +106,19 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 2. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 3. Test the setup:
+
 ```bash
 python quick_test.py
 ```
 
 4. Start the API server:
+
 ```bash
 python app.py
 ```
@@ -122,12 +128,14 @@ Backend API will be available at [http://localhost:5000](http://localhost:5000)
 ### Frontend Setup
 
 1. Install dependencies:
+
 ```bash
 cd frontend
 npm install
 ```
 
 2. Run development server:
+
 ```bash
 npm run dev
 ```
@@ -155,12 +163,14 @@ See [backend/README.md](backend/README.md) for detailed API documentation.
 ## Current Implementation Status
 
 ### ✅ Completed (EDSR Post-processing)
+
 - EDSR model integration
 - 4x super-resolution
 - Frontend-backend communication
 - Image upload/download pipeline
 
 ### 🚧 In Progress (Main Processing)
+
 - Image deblurring algorithm (research phase)
 - Main processing pipeline integration
 
@@ -176,12 +186,14 @@ See [backend/README.md](backend/README.md) for detailed API documentation.
 ## Technologies
 
 ### Frontend
+
 - Next.js 14
 - React 18
 - TypeScript
 - CSS (custom styling)
 
 ### Backend
+
 - Flask (API server)
 - PyTorch 2.x (EDSR inference)
 - Pillow (image processing)
@@ -190,6 +202,7 @@ See [backend/README.md](backend/README.md) for detailed API documentation.
 ## Git Configuration
 
 The project uses multiple `.gitignore` files:
+
 - Root `.gitignore` - Overall project exclusions
 - `backend/.gitignore` - Python/Flask specific
 - Frontend uses Next.js default ignores
@@ -197,9 +210,11 @@ The project uses multiple `.gitignore` files:
 ## Deployment
 
 ### Local Development
+
 Follow setup instructions above.
 
 ### Production Considerations
+
 - Frontend: Deploy to Vercel/Netlify
 - Backend: Deploy to AWS EC2, Heroku, or similar
 - For AWS: t3.medium or larger recommended

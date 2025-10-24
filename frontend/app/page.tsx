@@ -14,7 +14,7 @@ export default function Home() {
         <div className="hero-card">
           <h1 className="hero-title">Pixel Revival</h1>
           <p className="hero-subtitle">
-            Transform noisy images into crystal-clear masterpieces with AI-powered denoising technology
+            Transform noisy images into crystal-clear masterpieces with integrated denoising technology
           </p>
           <Link className="demo-button" href="/demo">
             <span className="button-text">Experience the Magic</span>

@@ -10,6 +10,8 @@ torchvision>=0.15.0
 # Image Processing
 Pillow>=10.0.0
 numpy>=1.24.0
+opencv-python>=4.8.0  # For advanced preprocessing
+matplotlib>=3.7.0  # For visualization and testing
 
 # Optional: For better performance
 # scikit-image>=0.22.0  # If you need additional image processing
