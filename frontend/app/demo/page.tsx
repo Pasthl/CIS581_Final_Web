@@ -7,13 +7,20 @@ const API_BASE_URL = "http://localhost:5000";
 export default function DemoPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [origUrl, setOrigUrl] = useState<string | null>(null);
-  const [denoisedUrl, setDenoisedUrl] = useState<string | null>(null);
+  const [preprocessedUrl, setPreprocessedUrl] = useState<string | null>(null);
+  const [deblurredUrl, setDeblurredUrl] = useState<string | null>(null);
+  const [edsrUrl, setEdsrUrl] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [processingTime, setProcessingTime] = useState<string | null>(null);
   const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string } | null>(null);
   const [isZoomed, setIsZoomed] = useState<boolean>(false);
+
+  // Pipeline step toggles
+  const [enablePreprocess, setEnablePreprocess] = useState<boolean>(true);
+  const [enableDeblur, setEnableDeblur] = useState<boolean>(true);
+  const [enableEDSR, setEnableEDSR] = useState<boolean>(true);
 
   async function onSelectFile() {
     const f = fileRef.current?.files?.[0];
@@ -23,11 +30,9 @@ export default function DemoPage() {
     setError(null);
     setProcessingTime(null);
 
-    // Show local preview
     const url = URL.createObjectURL(f);
     setOrigUrl(url);
 
-    // Upload and process with backend
     await processImage(f);
   }
 
@@ -38,8 +43,11 @@ export default function DemoPage() {
     try {
       const formData = new FormData();
       formData.append("image", file);
+      formData.append("enable_preprocess", enablePreprocess.toString());
+      formData.append("enable_deblur", enableDeblur.toString());
+      formData.append("enable_edsr", enableEDSR.toString());
 
-      const response = await fetch(`${API_BASE_URL}/api/denoise`, {
+      const response = await fetch(`${API_BASE_URL}/api/pipeline`, {
         method: "POST",
         body: formData,
       });
@@ -51,8 +59,9 @@ export default function DemoPage() {
       const data = await response.json();
 
       if (data.success) {
-        // Use base64 image data directly (no file storage needed)
-        setDenoisedUrl(data.output.image_data);
+        setPreprocessedUrl(data.preprocessed || null);
+        setDeblurredUrl(data.deblurred || null);
+        setEdsrUrl(data.edsr || null);
         setProcessingTime(data.processing_time);
       } else {
         throw new Error(data.error || "Processing failed");
@@ -60,7 +69,9 @@ export default function DemoPage() {
     } catch (err) {
       console.error("Error processing image:", err);
       setError(err instanceof Error ? err.message : "Failed to process image. Make sure the backend server is running.");
-      setDenoisedUrl(null);
+      setPreprocessedUrl(null);
+      setDeblurredUrl(null);
+      setEdsrUrl(null);
     } finally {
       setIsProcessing(false);
     }
@@ -69,7 +80,9 @@ export default function DemoPage() {
   function clearSelection() {
     if (origUrl) URL.revokeObjectURL(origUrl);
     setOrigUrl(null);
-    setDenoisedUrl(null);
+    setPreprocessedUrl(null);
+    setDeblurredUrl(null);
+    setEdsrUrl(null);
     setFileName("");
     setError(null);
     setProcessingTime(null);
@@ -91,6 +104,40 @@ export default function DemoPage() {
     setIsZoomed(!isZoomed);
   }
 
+  const ImageCard = ({ url, title, badge }: { url: string | null; title: string; badge: string }) => (
+    <div className="preview-card">
+      <div className="preview-header">
+        <span className="preview-badge">{badge}</span>
+      </div>
+      {url ? (
+        <div className="image-container">
+          <img
+            src={url}
+            alt={title}
+            className="preview-image"
+            onClick={() => openLightbox(url, title)}
+            style={{ cursor: 'zoom-in' }}
+            title="Click to enlarge"
+          />
+        </div>
+      ) : (
+        <div className="empty-state">
+          {isProcessing ? (
+            <>
+              <div className="empty-icon loading">⚙️</div>
+              <div className="empty-text">Processing...</div>
+            </>
+          ) : (
+            <>
+              <div className="empty-icon">✨</div>
+              <div className="empty-text">{title}</div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <>
       <nav className="nav">
@@ -102,9 +149,9 @@ export default function DemoPage() {
 
       <main className="container">
         <div className="demo-header-card">
-          <h1 className="demo-title">Image Denoising Demo</h1>
+          <h1 className="demo-title">Image Processing Pipeline</h1>
           <p className="demo-description">
-            Upload an image to experience super-resolution with EDSR.
+            Upload an image to see the full processing pipeline: Preprocessing → Deblur → Super-Resolution
           </p>
 
           <div className="demo-controls">
@@ -136,11 +183,40 @@ export default function DemoPage() {
             )}
           </div>
 
-          {/* Status messages */}
+          <div className="pipeline-toggles">
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={enablePreprocess}
+                onChange={(e) => setEnablePreprocess(e.target.checked)}
+                disabled={isProcessing}
+              />
+              <span>Preprocessing</span>
+            </label>
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={enableDeblur}
+                onChange={(e) => setEnableDeblur(e.target.checked)}
+                disabled={isProcessing}
+              />
+              <span>Deblur</span>
+            </label>
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={enableEDSR}
+                onChange={(e) => setEnableEDSR(e.target.checked)}
+                disabled={isProcessing}
+              />
+              <span>EDSR (4x)</span>
+            </label>
+          </div>
+
           {isProcessing && (
             <div className="status-message processing">
               <span className="status-icon">⚙️</span>
-              Processing image with EDSR model...
+              Processing pipeline...
             </div>
           )}
 
@@ -154,74 +230,19 @@ export default function DemoPage() {
           {processingTime && !isProcessing && (
             <div className="status-message success">
               <span className="status-icon">✓</span>
-              Image processed in {processingTime}
+              Pipeline completed in {processingTime}
             </div>
           )}
         </div>
 
-        <div className="preview">
-          <div className="preview-card">
-            <div className="preview-header">
-              <span className="preview-badge">Original</span>
-            </div>
-            {origUrl ? (
-              <div className="image-container">
-                <img
-                  src={origUrl}
-                  alt="original preview"
-                  className="preview-image"
-                  onClick={() => openLightbox(origUrl, "Original Image")}
-                  style={{ cursor: 'zoom-in' }}
-                  title="Click to enlarge"
-                />
-              </div>
-            ) : (
-              <div className="empty-state">
-                <div className="empty-icon">🖼️</div>
-                <div className="empty-text">No image selected</div>
-                <div className="empty-hint">Upload an image to get started</div>
-              </div>
-            )}
-          </div>
-
-          <div className="preview-card">
-            <div className="preview-header">
-              <span className="preview-badge denoised">Super-Resolution (4x)</span>
-              {isProcessing && <span className="processing-badge">Processing...</span>}
-            </div>
-            {denoisedUrl ? (
-              <div className="image-container">
-                <img
-                  src={denoisedUrl}
-                  alt="denoised result"
-                  className="preview-image"
-                  onClick={() => openLightbox(denoisedUrl, "Super-Resolution Image (4x)")}
-                  style={{ cursor: 'zoom-in' }}
-                  title="Click to enlarge"
-                />
-              </div>
-            ) : (
-              <div className="empty-state">
-                {isProcessing ? (
-                  <>
-                    <div className="empty-icon loading">⚙️</div>
-                    <div className="empty-text">Processing...</div>
-                    <div className="empty-hint">Running EDSR model</div>
-                  </>
-                ) : (
-                  <>
-                    <div className="empty-icon">✨</div>
-                    <div className="empty-text">Result</div>
-                    <div className="empty-hint">Upload an image to see the magic</div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+        <div className="preview-grid">
+          <ImageCard url={origUrl} title="Original" badge="1. Original" />
+          <ImageCard url={preprocessedUrl} title="Preprocessed" badge="2. Preprocessed" />
+          <ImageCard url={deblurredUrl} title="Deblurred" badge="3. Deblurred" />
+          <ImageCard url={edsrUrl} title="Super-Resolution (4x)" badge="4. EDSR (4x)" />
         </div>
       </main>
 
-      {/* Lightbox Modal */}
       {lightboxImage && (
         <div
           onClick={closeLightbox}
@@ -288,15 +309,13 @@ export default function DemoPage() {
               style={{
                 maxWidth: isZoomed ? 'none' : '100%',
                 maxHeight: isZoomed ? 'none' : '80vh',
-                width: isZoomed ? 'auto' : 'auto',
-                height: isZoomed ? 'auto' : 'auto',
                 objectFit: 'contain',
                 borderRadius: '8px',
                 boxShadow: '0 0 50px rgba(0, 0, 0, 0.8)',
                 cursor: isZoomed ? 'zoom-out' : 'zoom-in',
                 transition: 'transform 0.2s ease'
               }}
-              title={isZoomed ? 'Click to zoom out' : 'Click to zoom in to 100%'}
+              title={isZoomed ? 'Click to zoom out' : 'Click to zoom in'}
             />
             <div
               style={{
@@ -307,7 +326,7 @@ export default function DemoPage() {
                 textShadow: '0 2px 8px rgba(0, 0, 0, 0.8)'
               }}
             >
-              {lightboxImage.title} {isZoomed && '(100% size - scroll to view)'}
+              {lightboxImage.title} {isZoomed && '(100% size)'}
             </div>
           </div>
         </div>

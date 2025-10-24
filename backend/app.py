@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime
 
 from src import get_model
+from src.preprocessing import preprocess_pipeline_custom
 
 # Configuration
 UPLOAD_FOLDER = 'storage/uploads'
@@ -153,6 +154,117 @@ def denoise_image():
             'error': 'Failed to process image',
             'details': str(e)
         }), 500
+
+
+@app.route('/api/pipeline', methods=['POST'])
+def process_pipeline():
+    """
+    Flexible processing pipeline with step selection
+    """
+    try:
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image file provided'}), 400
+
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({'error': f'Invalid file type'}), 400
+
+        # Get step toggles
+        enable_preprocess = request.form.get('enable_preprocess', 'true').lower() == 'true'
+        enable_deblur = request.form.get('enable_deblur', 'true').lower() == 'true'
+        enable_edsr = request.form.get('enable_edsr', 'true').lower() == 'true'
+
+        # Save uploaded file
+        file_ext = file.filename.rsplit('.', 1)[1].lower()
+        unique_id = str(uuid.uuid4())
+        input_filename = f"{unique_id}_input.{file_ext}"
+        input_path = os.path.join(app.config['UPLOAD_FOLDER'], input_filename)
+        file.save(input_path)
+
+        print(f"Processing pipeline for: {input_filename}")
+        print(f"  Steps: Preprocess={enable_preprocess}, Deblur={enable_deblur}, EDSR={enable_edsr}")
+        start_time = datetime.now()
+
+        # Load original image
+        current_img = Image.open(input_path)
+        result = {}
+
+        # Step 1: Preprocessing
+        if enable_preprocess:
+            print("  [1] Preprocessing...")
+            preprocessed_img = preprocess_pipeline_custom(
+                input_path,
+                None,
+                remove_artifacts=False,
+                enhance_contrast=True,
+                contrast_method='clahe',
+                contrast_clip=1.5,
+                denoise=False,
+                gamma=None
+            )
+            current_img = preprocessed_img
+            result['preprocessed'] = preprocessed_img
+        else:
+            print("  [1] Preprocessing skipped")
+            result['preprocessed'] = None
+
+        # Step 2: Deblur (placeholder)
+        if enable_deblur:
+            print("  [2] Deblur (placeholder)...")
+            deblurred_img = current_img
+            current_img = deblurred_img
+            result['deblurred'] = deblurred_img
+        else:
+            print("  [2] Deblur skipped")
+            result['deblurred'] = None
+
+        # Step 3: EDSR Super-Resolution
+        if enable_edsr:
+            print("  [3] EDSR Super-Resolution...")
+            edsr_model = get_edsr_model()
+            edsr_img = edsr_model.infer_from_pil(current_img, output_path=None)
+            result['edsr'] = edsr_img
+        else:
+            print("  [3] EDSR skipped")
+            result['edsr'] = None
+
+        elapsed = (datetime.now() - start_time).total_seconds()
+        print(f"Pipeline completed in {elapsed:.2f}s")
+
+        # Convert to base64
+        def img_to_base64(img):
+            if img is None:
+                return None
+            buffered = BytesIO()
+            img.save(buffered, format="PNG")
+            return f'data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode("utf-8")}'
+
+        # Clean up
+        try:
+            os.remove(input_path)
+        except Exception as e:
+            print(f"Cleanup warning: {e}")
+
+        return jsonify({
+            'success': True,
+            'message': 'Pipeline completed',
+            'preprocessed': img_to_base64(result.get('preprocessed')),
+            'deblurred': img_to_base64(result.get('deblurred')),
+            'edsr': img_to_base64(result.get('edsr')),
+            'processing_time': f"{elapsed:.2f}s"
+        })
+
+    except Exception as e:
+        print(f"Pipeline error: {str(e)}")
+        try:
+            if 'input_path' in locals() and os.path.exists(input_path):
+                os.remove(input_path)
+        except:
+            pass
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/images/<filename>')

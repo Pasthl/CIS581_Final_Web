@@ -101,6 +101,16 @@ h2 { font-size: 20px; margin: 0 0 8px; color: var(--muted); }
   .preview { grid-template-columns: 1fr 1fr; }
 }
 
+/* Preview Grid for Pipeline (2x2) */
+.preview-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 800px) {
+  .preview-grid { grid-template-columns: 1fr 1fr; }
+}
+
 .imgbox {
   display: grid;
   gap: 8px;
@@ -198,6 +208,48 @@ h2 { font-size: 20px; margin: 0 0 8px; color: var(--muted); }
   transform: translateX(4px);
 }
 
+/* Author Card */
+.author-card {
+  margin-top: 32px;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.03) 0%, rgba(16, 185, 129, 0.05) 100%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 4px 12px rgba(57,183,124,0.04);
+}
+
+.author-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+
+.author-names {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.author-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: 'Georgia', serif;
+  letter-spacing: 0.3px;
+}
+
+.author-separator {
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 300;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .hero-card {
@@ -210,6 +262,14 @@ h2 { font-size: 20px; margin: 0 0 8px; color: var(--muted); }
 
   .hero-subtitle {
     font-size: 18px;
+  }
+
+  .author-card {
+    padding: 20px 24px;
+  }
+
+  .author-name {
+    font-size: 16px;
   }
 
   .demo-button {
@@ -494,6 +554,46 @@ h2 { font-size: 20px; margin: 0 0 8px; color: var(--muted); }
 .file-upload-label:has(input:disabled) {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Pipeline Toggles */
+.pipeline-toggles {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--bg);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.toggle-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.toggle-label input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.toggle-label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* Responsive Demo Page */

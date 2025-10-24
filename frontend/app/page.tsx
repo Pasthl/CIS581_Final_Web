@@ -21,6 +21,15 @@ export default function Home() {
             <span className="button-arrow">→</span>
           </Link>
         </div>
+
+        <div className="author-card">
+          <div className="author-label">Created by</div>
+          <div className="author-names">
+            <span className="author-name">Ann Hua</span>
+            <span className="author-separator">·</span>
+            <span className="author-name">Livia Yuan</span>
+          </div>
+        </div>
       </main>
     </>
   );
