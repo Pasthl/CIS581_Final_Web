@@ -21,6 +21,7 @@ export default function DemoPage() {
   const [enablePreprocess, setEnablePreprocess] = useState<boolean>(true);
   const [enableDeblur, setEnableDeblur] = useState<boolean>(true);
   const [enableEDSR, setEnableEDSR] = useState<boolean>(true);
+  const [enableFaceEnhance, setEnableFaceEnhance] = useState<boolean>(false);
 
   async function onSelectFile() {
     const f = fileRef.current?.files?.[0];
@@ -46,6 +47,7 @@ export default function DemoPage() {
       formData.append("enable_preprocess", enablePreprocess.toString());
       formData.append("enable_deblur", enableDeblur.toString());
       formData.append("enable_edsr", enableEDSR.toString());
+      formData.append("enable_face_enhance", enableFaceEnhance.toString());
 
       const response = await fetch(`${API_BASE_URL}/api/pipeline`, {
         method: "POST",
@@ -200,7 +202,16 @@ export default function DemoPage() {
                 onChange={(e) => setEnableDeblur(e.target.checked)}
                 disabled={isProcessing}
               />
-              <span>Deblur</span>
+              <span>Real-ESRGAN (4x)</span>
+            </label>
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={enableFaceEnhance}
+                onChange={(e) => setEnableFaceEnhance(e.target.checked)}
+                disabled={isProcessing || !enableDeblur}
+              />
+              <span>Face Enhance (GFPGAN)</span>
             </label>
             <label className="toggle-label">
               <input
@@ -238,7 +249,7 @@ export default function DemoPage() {
         <div className="preview-grid">
           <ImageCard url={origUrl} title="Original" badge="1. Original" />
           <ImageCard url={preprocessedUrl} title="Preprocessed" badge="2. Preprocessed" />
-          <ImageCard url={deblurredUrl} title="Deblurred" badge="3. Deblurred" />
+          <ImageCard url={deblurredUrl} title="Real-ESRGAN (4x)" badge="3. Real-ESRGAN" />
           <ImageCard url={edsrUrl} title="Super-Resolution (4x)" badge="4. EDSR (4x)" />
         </div>
       </main>

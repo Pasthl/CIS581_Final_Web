@@ -17,6 +17,11 @@ storage/outputs/*
 !storage/uploads/.gitkeep
 !storage/outputs/.gitkeep
 
+# Model weights (too large for GitHub)
+gfpgan/
+models/*.pth
+models/*.pt
+
 # Test images
 testimage/*
 !testimage/README.txt

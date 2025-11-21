@@ -10,6 +10,7 @@ from datetime import datetime
 
 from src import get_model
 from src.preprocessing import preprocess_pipeline_custom
+from src.realesrgan_inference import get_realesrgan_model
 
 # Configuration
 UPLOAD_FOLDER = 'storage/uploads'
@@ -44,7 +45,7 @@ def get_edsr_model():
     if model is None:
         model_path = os.path.join('models', 'edsr_baseline_x4-6b446fab.pt')
         print("Initializing EDSR model...")
-        model = get_model(model_path=model_path, scale=4, device='cpu')
+        model = get_model(model_path=model_path, scale=4, device='cuda')
         print("Model ready!")
     return model
 
@@ -176,6 +177,7 @@ def process_pipeline():
         enable_preprocess = request.form.get('enable_preprocess', 'true').lower() == 'true'
         enable_deblur = request.form.get('enable_deblur', 'true').lower() == 'true'
         enable_edsr = request.form.get('enable_edsr', 'true').lower() == 'true'
+        enable_face_enhance = request.form.get('enable_face_enhance', 'false').lower() == 'true'
 
         # Save uploaded file
         file_ext = file.filename.rsplit('.', 1)[1].lower()
@@ -185,7 +187,7 @@ def process_pipeline():
         file.save(input_path)
 
         print(f"Processing pipeline for: {input_filename}")
-        print(f"  Steps: Preprocess={enable_preprocess}, Deblur={enable_deblur}, EDSR={enable_edsr}")
+        print(f"  Steps: Preprocess={enable_preprocess}, RealESRGAN={enable_deblur}, EDSR={enable_edsr}")
         start_time = datetime.now()
 
         # Load original image
@@ -211,14 +213,19 @@ def process_pipeline():
             print("  [1] Preprocessing skipped")
             result['preprocessed'] = None
 
-        # Step 2: Deblur (placeholder)
+        # Step 2: Real-ESRGAN Super-Resolution
         if enable_deblur:
-            print("  [2] Deblur (placeholder)...")
-            deblurred_img = current_img
+            face_str = "+GFPGAN" if enable_face_enhance else ""
+            print(f"  [2] Real-ESRGAN Super-Resolution{face_str}...")
+            realesrgan_model = get_realesrgan_model(
+                model_path=os.path.join('models', 'RealESRGAN_x4plus.pth'),
+                scale=4, device='cuda'
+            )
+            deblurred_img = realesrgan_model.infer_from_pil(current_img, face_enhance=enable_face_enhance)
             current_img = deblurred_img
             result['deblurred'] = deblurred_img
         else:
-            print("  [2] Deblur skipped")
+            print("  [2] Real-ESRGAN skipped")
             result['deblurred'] = None
 
         # Step 3: EDSR Super-Resolution
