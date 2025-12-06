@@ -117,23 +117,25 @@ def jpeg_compression(image, quality=50):
     return compressed
 
 
-def degrade_for_evaluation(image, degradation_type='light', scale=4, **kwargs):
+def degrade_for_evaluation(image, degradation_type=None, scale=4,
+                          enable_blur_noise=True, enable_downscale=False, **kwargs):
     """
     Apply degradation to a high-quality image for evaluation
 
     Args:
         image: PIL Image (high-quality ground truth)
-        degradation_type: Type of degradation to apply
-            - 'light': Light degradation with noise and blur, NO downscaling (default)
+        degradation_type: Legacy parameter for backward compatibility. If None, uses enable_* flags.
+            - 'light': Light degradation with noise and blur, NO downscaling
             - 'medium': Moderate degradation with noise, blur, and 2x downscaling
             - 'heavy': Heavy degradation with noise, blur, compression, and 4x downscaling
-            - 'bicubic': Simple bicubic downscaling only
-            - 'blur_downscale': Add blur then downscale
-            - 'noise_downscale': Add noise then downscale
-            - 'jpeg_downscale': JPEG compression then downscale
-            - 'realistic': Combination of blur, noise, and compression
-        scale: Downscaling factor (default: 4)
-        **kwargs: Additional parameters for specific degradation types
+            (other legacy options...)
+        scale: Downscaling factor when enable_downscale=True (default: 4)
+        enable_blur_noise: Add Gaussian blur and noise (default: True)
+        enable_downscale: Downscale image by scale factor (default: False)
+        **kwargs: Additional parameters:
+            - blur_kernel: Blur kernel size (default: 3)
+            - noise_sigma: Gaussian noise sigma (default: 8)
+            - downscale_factor: Override scale parameter (default: 2)
 
     Returns:
         PIL Image (degraded low-quality image)
@@ -141,6 +143,32 @@ def degrade_for_evaluation(image, degradation_type='light', scale=4, **kwargs):
     if isinstance(image, np.ndarray):
         image = Image.fromarray(image)
 
+    # If degradation_type is specified, use legacy mode for backward compatibility
+    if degradation_type is not None:
+        return _degrade_legacy(image, degradation_type, scale, **kwargs)
+
+    # New flexible mode: apply degradations based on flags
+    degraded = image
+
+    # Step 1: Apply blur and noise if enabled
+    if enable_blur_noise:
+        blur_kernel = kwargs.get('blur_kernel', 3)
+        noise_sigma = kwargs.get('noise_sigma', 8)
+        degraded = add_blur(degraded, blur_type='gaussian', kernel_size=blur_kernel)
+        degraded = add_gaussian_noise(degraded, sigma=noise_sigma)
+
+    # Step 2: Apply downscaling if enabled
+    if enable_downscale:
+        downscale_factor = kwargs.get('downscale_factor', 2)  # Default to 2x
+        degraded = downscale_image(degraded, scale_factor=downscale_factor)
+
+    return degraded
+
+
+def _degrade_legacy(image, degradation_type, scale=4, **kwargs):
+    """
+    Legacy degradation function for backward compatibility
+    """
     if degradation_type == 'light':
         # Light degradation: blur + noise, NO downscaling
         blur_kernel = kwargs.get('blur_kernel', 3)

@@ -197,7 +197,10 @@ def process_pipeline():
         enable_edsr = request.form.get('enable_edsr', 'true').lower() == 'true'
         enable_face_enhance = request.form.get('enable_face_enhance', 'false').lower() == 'true'
         evaluation_mode = request.form.get('evaluation_mode', 'false').lower() == 'true'
-        degradation_type = request.form.get('degradation_type', 'light')  # Default: light
+
+        # Get degradation options (for evaluation mode)
+        enable_blur_noise = request.form.get('enable_blur_noise', 'false').lower() == 'true'
+        enable_downscale = request.form.get('enable_downscale', 'false').lower() == 'true'
 
         # Save uploaded file
         file_ext = file.filename.rsplit('.', 1)[1].lower()
@@ -218,14 +221,30 @@ def process_pipeline():
 
         # Evaluation Mode: degrade the image first
         if evaluation_mode:
-            print(f"  [Evaluation Mode] Degrading image with method: {degradation_type}")
+            print(f"  [Evaluation Mode] Degrading image with options: "
+                  f"blur_noise={enable_blur_noise}, downscale={enable_downscale}")
             ground_truth = uploaded_img  # High-quality ground truth
-            degraded_img = degrade_for_evaluation(ground_truth, degradation_type=degradation_type, scale=4)
+
+            # New mode: flexible degradation
+            degraded_img = degrade_for_evaluation(
+                ground_truth,
+                degradation_type=None,      
+                scale=4,
+                enable_blur_noise=enable_blur_noise,
+                enable_downscale=enable_downscale,
+                # optional parameters with defaults
+                # blur_kernel=3,
+                # noise_sigma=8,
+                # downscale_factor=4,
+            )
+
             current_img = degraded_img
+
             result['ground_truth'] = ground_truth
             result['degraded'] = degraded_img
-            reference_img = ground_truth  # Use ground truth for metrics
+            reference_img = ground_truth  
             print(f"  [Evaluation Mode] Ground truth size: {ground_truth.size}, Degraded size: {degraded_img.size}")
+
         else:
             # Normal mode: use uploaded image as-is
             current_img = uploaded_img

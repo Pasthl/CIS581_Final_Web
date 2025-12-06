@@ -2,15 +2,19 @@
 Image Quality Assessment Metrics
 
 Provides metrics for evaluating image super-resolution results:
-- PSNR (Peak Signal-to-Noise Ratio)
-- SSIM (Structural Similarity Index)
-- MSE (Mean Squared Error)
-- MAE (Mean Absolute Error)
+- PSNR (Peak Signal-to-Noise Ratio) - Full-reference
+- SSIM (Structural Similarity Index) - Full-reference
+- NIQE (Natural Image Quality Evaluator) - No-reference
+- LPIPS (Learned Perceptual Image Patch Similarity) - Full-reference
 """
 
 import numpy as np
 from PIL import Image
 import torch
+
+# Lazy-load pyiqa models to avoid startup overhead
+_niqe_model = None
+_lpips_model = None
 
 
 def calculate_psnr(img1, img2, max_value=255.0):
@@ -167,24 +171,147 @@ def calculate_mae(img1, img2):
     return float(mae)
 
 
+def calculate_niqe(img):
+    """
+    Calculate NIQE (Natural Image Quality Evaluator) score
+
+    NIQE is a no-reference image quality metric that evaluates the "naturalness"
+    of an image without requiring a reference image.
+
+    Args:
+        img: Image to evaluate (numpy array, torch tensor, or PIL Image)
+
+    Returns:
+        NIQE score (lower is better, typical range: 0-100)
+    """
+    global _niqe_model
+
+    try:
+        import pyiqa
+
+        # Lazy-load NIQE model
+        if _niqe_model is None:
+            _niqe_model = pyiqa.create_metric('niqe', device='cpu')
+            print("[Metrics] NIQE model loaded")
+
+        # Convert to PIL Image if needed
+        if isinstance(img, np.ndarray):
+            img_pil = Image.fromarray(img.astype(np.uint8))
+        elif isinstance(img, torch.Tensor):
+            img_np = _to_numpy(img)
+            img_pil = Image.fromarray(img_np.astype(np.uint8))
+        elif isinstance(img, Image.Image):
+            img_pil = img
+        else:
+            raise TypeError(f"Unsupported image type: {type(img)}")
+
+        # Convert PIL to tensor for pyiqa (expects tensor in [0, 1] range)
+        img_np = np.array(img_pil).astype(np.float32) / 255.0
+        img_tensor = torch.from_numpy(img_np).permute(2, 0, 1).unsqueeze(0)  # (1, C, H, W)
+
+        # Calculate NIQE score
+        score = _niqe_model(img_tensor)
+        return float(score.item())
+
+    except ImportError:
+        print("[Warning] pyiqa not installed. Install with: pip install pyiqa")
+        return None
+    except Exception as e:
+        print(f"[Warning] NIQE calculation failed: {e}")
+        return None
+
+
+def calculate_lpips(img1, img2):
+    """
+    Calculate LPIPS (Learned Perceptual Image Patch Similarity)
+
+    LPIPS is a perceptual similarity metric using deep features.
+    It better correlates with human perception than pixel-based metrics.
+
+    Args:
+        img1: Reference image (numpy array, torch tensor, or PIL Image)
+        img2: Distorted image (numpy array, torch tensor, or PIL Image)
+
+    Returns:
+        LPIPS score (lower is better, range: 0-1)
+    """
+    global _lpips_model
+
+    try:
+        import pyiqa
+
+        # Lazy-load LPIPS model
+        if _lpips_model is None:
+            _lpips_model = pyiqa.create_metric('lpips', device='cpu')
+            print("[Metrics] LPIPS model loaded")
+
+        # Convert both images to tensors
+        def to_tensor(img):
+            if isinstance(img, np.ndarray):
+                img_pil = Image.fromarray(img.astype(np.uint8))
+            elif isinstance(img, torch.Tensor):
+                img_np = _to_numpy(img)
+                img_pil = Image.fromarray(img_np.astype(np.uint8))
+            elif isinstance(img, Image.Image):
+                img_pil = img
+            else:
+                raise TypeError(f"Unsupported image type: {type(img)}")
+
+            # Convert to tensor in [0, 1] range
+            img_np = np.array(img_pil).astype(np.float32) / 255.0
+            return torch.from_numpy(img_np).permute(2, 0, 1).unsqueeze(0)  # (1, C, H, W)
+
+        img1_tensor = to_tensor(img1)
+        img2_tensor = to_tensor(img2)
+
+        # Ensure same shape
+        if img1_tensor.shape != img2_tensor.shape:
+            raise ValueError(f"Images must have same shape. Got {img1_tensor.shape} and {img2_tensor.shape}")
+
+        # Calculate LPIPS score
+        score = _lpips_model(img1_tensor, img2_tensor)
+        return float(score.item())
+
+    except ImportError:
+        print("[Warning] pyiqa not installed. Install with: pip install pyiqa")
+        return None
+    except Exception as e:
+        print(f"[Warning] LPIPS calculation failed: {e}")
+        return None
+
+
 def calculate_all_metrics(img1, img2, max_value=255.0):
     """
     Calculate all quality metrics between two images
 
     Args:
-        img1: First image (numpy array, torch tensor, or PIL Image)
-        img2: Second image (numpy array, torch tensor, or PIL Image)
+        img1: Reference/ground truth image (numpy array, torch tensor, or PIL Image)
+        img2: Distorted/processed image (numpy array, torch tensor, or PIL Image)
         max_value: Maximum possible pixel value (default: 255)
 
     Returns:
-        Dictionary with all metrics
+        Dictionary with all metrics:
+        - psnr: Peak Signal-to-Noise Ratio (higher is better)
+        - ssim: Structural Similarity Index (higher is better, 0-1)
+        - niqe: Natural Image Quality Evaluator (lower is better)
+        - lpips: Learned Perceptual Similarity (lower is better, 0-1)
     """
-    return {
+    metrics = {
         'psnr': calculate_psnr(img1, img2, max_value),
         'ssim': calculate_ssim(img1, img2, max_value),
-        'mse': calculate_mse(img1, img2),
-        'mae': calculate_mae(img1, img2)
     }
+
+    # Calculate NIQE on the processed image (no-reference metric)
+    niqe_score = calculate_niqe(img2)
+    if niqe_score is not None:
+        metrics['niqe'] = niqe_score
+
+    # Calculate LPIPS (perceptual similarity)
+    lpips_score = calculate_lpips(img1, img2)
+    if lpips_score is not None:
+        metrics['lpips'] = lpips_score
+
+    return metrics
 
 
 def _to_numpy(img):

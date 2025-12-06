@@ -923,8 +923,8 @@ h2 { font-size: 20px; margin: 0 0 8px; color: var(--muted); }
   }
 }
 
-/* Degradation Selector */
-.degradation-selector {
+/* Degradation Options */
+.degradation-options {
   margin-top: 16px;
   padding: 16px 20px;
   background: var(--card);
@@ -932,50 +932,11 @@ h2 { font-size: 20px; margin: 0 0 8px; color: var(--muted); }
   border-radius: 12px;
 }
 
-.selector-label {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.selector-title {
+.options-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
-}
-
-.degradation-select {
-  padding: 10px 14px;
-  font-size: 14px;
-  font-family: inherit;
-  color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.degradation-select:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: var(--card);
-}
-
-.degradation-select:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(57, 183, 124, 0.1);
-}
-
-.degradation-select:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.degradation-select option {
-  padding: 8px;
-  background: var(--card);
-  color: var(--text);
+  margin: 0 0 12px;
 }
 
 /* Responsive Evaluation Mode */
@@ -988,17 +949,12 @@ h2 { font-size: 20px; margin: 0 0 8px; color: var(--muted); }
     font-size: 13px;
   }
 
-  .degradation-selector {
+  .degradation-options {
     padding: 14px 16px;
   }
 
-  .selector-title {
+  .options-title {
     font-size: 13px;
-  }
-
-  .degradation-select {
-    font-size: 13px;
-    padding: 9px 12px;
   }
 
   .evaluation-images {

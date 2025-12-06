@@ -25,14 +25,17 @@ export default function DemoPage() {
   const [enableEDSR, setEnableEDSR] = useState<boolean>(true);
   const [enableFaceEnhance, setEnableFaceEnhance] = useState<boolean>(false);
   const [evaluationMode, setEvaluationMode] = useState<boolean>(false);
-  const [degradationType, setDegradationType] = useState<string>('light');
+
+  // Degradation options (for evaluation mode)
+  const [enableBlurNoise, setEnableBlurNoise] = useState<boolean>(true);
+  const [enableDownscale, setEnableDownscale] = useState<boolean>(false);
 
   // Metrics data
   type MetricsData = {
     psnr: number;
     ssim: number;
-    mse: number;
-    mae: number;
+    niqe?: number;  // Optional: may not be available if pyiqa not installed
+    lpips?: number; // Optional: may not be available if pyiqa not installed
   };
   const [metrics, setMetrics] = useState<{
     preprocessed?: MetricsData;
@@ -67,7 +70,8 @@ export default function DemoPage() {
       formData.append("enable_edsr", enableEDSR.toString());
       formData.append("enable_face_enhance", enableFaceEnhance.toString());
       formData.append("evaluation_mode", evaluationMode.toString());
-      formData.append("degradation_type", degradationType);
+      formData.append("enable_blur_noise", enableBlurNoise.toString());
+      formData.append("enable_downscale", enableDownscale.toString());
 
       const response = await fetch(`${API_BASE_URL}/api/pipeline`, {
         method: "POST",
@@ -272,20 +276,28 @@ export default function DemoPage() {
                 </div>
               </div>
 
-              <div className="degradation-selector">
-                <label className="selector-label">
-                  <span className="selector-title">Degradation Level:</span>
-                  <select
-                    value={degradationType}
-                    onChange={(e) => setDegradationType(e.target.value)}
-                    disabled={isProcessing}
-                    className="degradation-select"
-                  >
-                    <option value="light">Light (Blur + Noise, Same Resolution)</option>
-                    <option value="medium">Medium (Blur + Noise + Compression + 2x Downscale)</option>
-                    <option value="heavy">Heavy (Blur + Noise + Compression + 4x Downscale)</option>
-                  </select>
-                </label>
+              <div className="degradation-options">
+                <h4 className="options-title">Degradation Options:</h4>
+                <div className="toggle-group">
+                  <label className="toggle-label">
+                    <input
+                      type="checkbox"
+                      checked={enableBlurNoise}
+                      onChange={(e) => setEnableBlurNoise(e.target.checked)}
+                      disabled={isProcessing}
+                    />
+                    <span>Add Blur + Noise</span>
+                  </label>
+                  <label className="toggle-label">
+                    <input
+                      type="checkbox"
+                      checked={enableDownscale}
+                      onChange={(e) => setEnableDownscale(e.target.checked)}
+                      disabled={isProcessing}
+                    />
+                    <span>Downscale 2x (Resolution ÷ 2)</span>
+                  </label>
+                </div>
               </div>
             </>
           )}
@@ -334,7 +346,7 @@ export default function DemoPage() {
           <div className="metrics-container">
             <h2 className="metrics-title">📊 Quality Metrics (vs. Ground Truth)</h2>
             <p className="metrics-description">
-              Metrics compare restored images against the original high-quality image. Higher PSNR and SSIM values indicate better quality.
+              Full-reference metrics (PSNR, SSIM, LPIPS) compare restored images against the original. NIQE evaluates naturalness without reference.
             </p>
             <div className="metrics-grid">
               {metrics.preprocessed && (
@@ -349,14 +361,18 @@ export default function DemoPage() {
                       <span className="metric-label">SSIM</span>
                       <span className="metric-value">{metrics.preprocessed.ssim.toFixed(4)}</span>
                     </div>
-                    <div className="metric-item">
-                      <span className="metric-label">MSE</span>
-                      <span className="metric-value">{metrics.preprocessed.mse.toFixed(2)}</span>
-                    </div>
-                    <div className="metric-item">
-                      <span className="metric-label">MAE</span>
-                      <span className="metric-value">{metrics.preprocessed.mae.toFixed(2)}</span>
-                    </div>
+                    {metrics.preprocessed.niqe !== undefined && (
+                      <div className="metric-item">
+                        <span className="metric-label">NIQE</span>
+                        <span className="metric-value">{metrics.preprocessed.niqe.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {metrics.preprocessed.lpips !== undefined && (
+                      <div className="metric-item">
+                        <span className="metric-label">LPIPS</span>
+                        <span className="metric-value">{metrics.preprocessed.lpips.toFixed(4)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -373,14 +389,18 @@ export default function DemoPage() {
                       <span className="metric-label">SSIM</span>
                       <span className="metric-value">{metrics.deblurred.ssim.toFixed(4)}</span>
                     </div>
-                    <div className="metric-item">
-                      <span className="metric-label">MSE</span>
-                      <span className="metric-value">{metrics.deblurred.mse.toFixed(2)}</span>
-                    </div>
-                    <div className="metric-item">
-                      <span className="metric-label">MAE</span>
-                      <span className="metric-value">{metrics.deblurred.mae.toFixed(2)}</span>
-                    </div>
+                    {metrics.deblurred.niqe !== undefined && (
+                      <div className="metric-item">
+                        <span className="metric-label">NIQE</span>
+                        <span className="metric-value">{metrics.deblurred.niqe.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {metrics.deblurred.lpips !== undefined && (
+                      <div className="metric-item">
+                        <span className="metric-label">LPIPS</span>
+                        <span className="metric-value">{metrics.deblurred.lpips.toFixed(4)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -397,14 +417,18 @@ export default function DemoPage() {
                       <span className="metric-label">SSIM</span>
                       <span className="metric-value">{metrics.edsr.ssim.toFixed(4)}</span>
                     </div>
-                    <div className="metric-item">
-                      <span className="metric-label">MSE</span>
-                      <span className="metric-value">{metrics.edsr.mse.toFixed(2)}</span>
-                    </div>
-                    <div className="metric-item">
-                      <span className="metric-label">MAE</span>
-                      <span className="metric-value">{metrics.edsr.mae.toFixed(2)}</span>
-                    </div>
+                    {metrics.edsr.niqe !== undefined && (
+                      <div className="metric-item">
+                        <span className="metric-label">NIQE</span>
+                        <span className="metric-value">{metrics.edsr.niqe.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {metrics.edsr.lpips !== undefined && (
+                      <div className="metric-item">
+                        <span className="metric-label">LPIPS</span>
+                        <span className="metric-value">{metrics.edsr.lpips.toFixed(4)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -413,10 +437,10 @@ export default function DemoPage() {
             <div className="metrics-legend">
               <h4>Metrics Guide:</h4>
               <ul>
-                <li><strong>PSNR</strong>: Peak Signal-to-Noise Ratio</li>
-                <li><strong>SSIM</strong>: Structural Similarity Index</li>
-                <li><strong>MSE</strong>: Mean Squared Error</li>
-                <li><strong>MAE</strong>: Mean Absolute Error</li>
+                <li><strong>PSNR</strong>: Peak Signal-to-Noise Ratio (higher is better, typical range: 20-50 dB)</li>
+                <li><strong>SSIM</strong>: Structural Similarity Index (higher is better, range: 0-1)</li>
+                <li><strong>NIQE</strong>: Natural Image Quality Evaluator (lower is better, no-reference metric)</li>
+                <li><strong>LPIPS</strong>: Learned Perceptual Similarity (lower is better, range: 0-1)</li>
               </ul>
             </div>
           </div>
