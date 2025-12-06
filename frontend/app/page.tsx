@@ -22,6 +22,33 @@ export default function Home() {
           </Link>
         </div>
 
+        <div className="pipeline-card">
+          <h2 className="pipeline-title">How It Works</h2>
+          <div className="pipeline-steps">
+            <div className="pipeline-step step-1">
+              <div className="step-number">1</div>
+              <div className="step-content">
+                <h3>Upload</h3>
+                <p>Select your noisy or low-resolution image</p>
+              </div>
+            </div>
+            <div className="pipeline-step step-2">
+              <div className="step-number">2</div>
+              <div className="step-content">
+                <h3>Denoise</h3>
+                <p>Advanced algorithms remove noise while preserving details</p>
+              </div>
+            </div>
+            <div className="pipeline-step step-3">
+              <div className="step-number">3</div>
+              <div className="step-content">
+                <h3>Enhance</h3>
+                <p>Super-resolution models upscale and sharpen your image</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="author-card">
           <div className="author-label">Created by</div>
           <div className="author-names">

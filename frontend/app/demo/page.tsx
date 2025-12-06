@@ -7,6 +7,8 @@ const API_BASE_URL = "http://localhost:5000";
 export default function DemoPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [origUrl, setOrigUrl] = useState<string | null>(null);
+  const [groundTruthUrl, setGroundTruthUrl] = useState<string | null>(null);
+  const [degradedUrl, setDegradedUrl] = useState<string | null>(null);
   const [preprocessedUrl, setPreprocessedUrl] = useState<string | null>(null);
   const [deblurredUrl, setDeblurredUrl] = useState<string | null>(null);
   const [edsrUrl, setEdsrUrl] = useState<string | null>(null);
@@ -22,6 +24,21 @@ export default function DemoPage() {
   const [enableDeblur, setEnableDeblur] = useState<boolean>(true);
   const [enableEDSR, setEnableEDSR] = useState<boolean>(true);
   const [enableFaceEnhance, setEnableFaceEnhance] = useState<boolean>(false);
+  const [evaluationMode, setEvaluationMode] = useState<boolean>(false);
+  const [degradationType, setDegradationType] = useState<string>('light');
+
+  // Metrics data
+  type MetricsData = {
+    psnr: number;
+    ssim: number;
+    mse: number;
+    mae: number;
+  };
+  const [metrics, setMetrics] = useState<{
+    preprocessed?: MetricsData;
+    deblurred?: MetricsData;
+    edsr?: MetricsData;
+  } | null>(null);
 
   async function onSelectFile() {
     const f = fileRef.current?.files?.[0];
@@ -30,6 +47,7 @@ export default function DemoPage() {
     setFileName(f.name);
     setError(null);
     setProcessingTime(null);
+    setMetrics(null);
 
     const url = URL.createObjectURL(f);
     setOrigUrl(url);
@@ -48,6 +66,8 @@ export default function DemoPage() {
       formData.append("enable_deblur", enableDeblur.toString());
       formData.append("enable_edsr", enableEDSR.toString());
       formData.append("enable_face_enhance", enableFaceEnhance.toString());
+      formData.append("evaluation_mode", evaluationMode.toString());
+      formData.append("degradation_type", degradationType);
 
       const response = await fetch(`${API_BASE_URL}/api/pipeline`, {
         method: "POST",
@@ -61,19 +81,25 @@ export default function DemoPage() {
       const data = await response.json();
 
       if (data.success) {
+        setGroundTruthUrl(data.ground_truth || null);
+        setDegradedUrl(data.degraded || null);
         setPreprocessedUrl(data.preprocessed || null);
         setDeblurredUrl(data.deblurred || null);
         setEdsrUrl(data.edsr || null);
         setProcessingTime(data.processing_time);
+        setMetrics(data.metrics || null);
       } else {
         throw new Error(data.error || "Processing failed");
       }
     } catch (err) {
       console.error("Error processing image:", err);
       setError(err instanceof Error ? err.message : "Failed to process image. Make sure the backend server is running.");
+      setGroundTruthUrl(null);
+      setDegradedUrl(null);
       setPreprocessedUrl(null);
       setDeblurredUrl(null);
       setEdsrUrl(null);
+      setMetrics(null);
     } finally {
       setIsProcessing(false);
     }
@@ -82,12 +108,15 @@ export default function DemoPage() {
   function clearSelection() {
     if (origUrl) URL.revokeObjectURL(origUrl);
     setOrigUrl(null);
+    setGroundTruthUrl(null);
+    setDegradedUrl(null);
     setPreprocessedUrl(null);
     setDeblurredUrl(null);
     setEdsrUrl(null);
     setFileName("");
     setError(null);
     setProcessingTime(null);
+    setMetrics(null);
     if (fileRef.current) fileRef.current.value = "";
   }
 
@@ -222,7 +251,44 @@ export default function DemoPage() {
               />
               <span>EDSR (4x)</span>
             </label>
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={evaluationMode}
+                onChange={(e) => setEvaluationMode(e.target.checked)}
+                disabled={isProcessing}
+              />
+              <span>🔬 Evaluation Mode</span>
+            </label>
           </div>
+
+          {evaluationMode && (
+            <>
+              <div className="evaluation-notice">
+                <span className="notice-icon">ℹ️</span>
+                <div className="notice-text">
+                  <strong>Evaluation Mode:</strong> Your high-quality image will be automatically degraded,
+                  then processed through the pipeline. Quality metrics will compare the restored image against your original.
+                </div>
+              </div>
+
+              <div className="degradation-selector">
+                <label className="selector-label">
+                  <span className="selector-title">Degradation Level:</span>
+                  <select
+                    value={degradationType}
+                    onChange={(e) => setDegradationType(e.target.value)}
+                    disabled={isProcessing}
+                    className="degradation-select"
+                  >
+                    <option value="light">Light (Blur + Noise, Same Resolution)</option>
+                    <option value="medium">Medium (Blur + Noise + Compression + 2x Downscale)</option>
+                    <option value="heavy">Heavy (Blur + Noise + Compression + 4x Downscale)</option>
+                  </select>
+                </label>
+              </div>
+            </>
+          )}
 
           {isProcessing && (
             <div className="status-message processing">
@@ -246,12 +312,115 @@ export default function DemoPage() {
           )}
         </div>
 
+        {evaluationMode && groundTruthUrl && (
+          <div className="evaluation-images">
+            <h3 className="section-title">📸 Evaluation Images</h3>
+            <div className="eval-grid">
+              <ImageCard url={groundTruthUrl} title="Ground Truth (Original)" badge="Ground Truth" />
+              <ImageCard url={degradedUrl} title="Degraded (Input)" badge="Degraded Input" />
+            </div>
+          </div>
+        )}
+
         <div className="preview-grid">
-          <ImageCard url={origUrl} title="Original" badge="1. Original" />
-          <ImageCard url={preprocessedUrl} title="Preprocessed" badge="2. Preprocessed" />
-          <ImageCard url={deblurredUrl} title="Real-ESRGAN (4x)" badge="3. Real-ESRGAN" />
-          <ImageCard url={edsrUrl} title="Super-Resolution (4x)" badge="4. EDSR (4x)" />
+          {!evaluationMode && <ImageCard url={origUrl} title="Original" badge="1. Original" />}
+          <ImageCard url={preprocessedUrl} title="Preprocessed" badge={evaluationMode ? "1. Preprocessed" : "2. Preprocessed"} />
+          <ImageCard url={deblurredUrl} title="Real-ESRGAN (4x)" badge={evaluationMode ? "2. Real-ESRGAN" : "3. Real-ESRGAN"} />
+          <ImageCard url={edsrUrl} title="Super-Resolution (4x)" badge={evaluationMode ? "3. EDSR (4x)" : "4. EDSR (4x)"} />
         </div>
+
+        {/* Quality Metrics Display */}
+        {evaluationMode && metrics && (
+          <div className="metrics-container">
+            <h2 className="metrics-title">📊 Quality Metrics (vs. Ground Truth)</h2>
+            <p className="metrics-description">
+              Metrics compare restored images against the original high-quality image. Higher PSNR and SSIM values indicate better quality.
+            </p>
+            <div className="metrics-grid">
+              {metrics.preprocessed && (
+                <div className="metric-card">
+                  <h3 className="metric-step">Preprocessing</h3>
+                  <div className="metric-values">
+                    <div className="metric-item">
+                      <span className="metric-label">PSNR</span>
+                      <span className="metric-value">{metrics.preprocessed.psnr.toFixed(2)} dB</span>
+                    </div>
+                    <div className="metric-item">
+                      <span className="metric-label">SSIM</span>
+                      <span className="metric-value">{metrics.preprocessed.ssim.toFixed(4)}</span>
+                    </div>
+                    <div className="metric-item">
+                      <span className="metric-label">MSE</span>
+                      <span className="metric-value">{metrics.preprocessed.mse.toFixed(2)}</span>
+                    </div>
+                    <div className="metric-item">
+                      <span className="metric-label">MAE</span>
+                      <span className="metric-value">{metrics.preprocessed.mae.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {metrics.deblurred && (
+                <div className="metric-card">
+                  <h3 className="metric-step">Real-ESRGAN</h3>
+                  <div className="metric-values">
+                    <div className="metric-item">
+                      <span className="metric-label">PSNR</span>
+                      <span className="metric-value">{metrics.deblurred.psnr.toFixed(2)} dB</span>
+                    </div>
+                    <div className="metric-item">
+                      <span className="metric-label">SSIM</span>
+                      <span className="metric-value">{metrics.deblurred.ssim.toFixed(4)}</span>
+                    </div>
+                    <div className="metric-item">
+                      <span className="metric-label">MSE</span>
+                      <span className="metric-value">{metrics.deblurred.mse.toFixed(2)}</span>
+                    </div>
+                    <div className="metric-item">
+                      <span className="metric-label">MAE</span>
+                      <span className="metric-value">{metrics.deblurred.mae.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {metrics.edsr && (
+                <div className="metric-card">
+                  <h3 className="metric-step">EDSR</h3>
+                  <div className="metric-values">
+                    <div className="metric-item">
+                      <span className="metric-label">PSNR</span>
+                      <span className="metric-value">{metrics.edsr.psnr.toFixed(2)} dB</span>
+                    </div>
+                    <div className="metric-item">
+                      <span className="metric-label">SSIM</span>
+                      <span className="metric-value">{metrics.edsr.ssim.toFixed(4)}</span>
+                    </div>
+                    <div className="metric-item">
+                      <span className="metric-label">MSE</span>
+                      <span className="metric-value">{metrics.edsr.mse.toFixed(2)}</span>
+                    </div>
+                    <div className="metric-item">
+                      <span className="metric-label">MAE</span>
+                      <span className="metric-value">{metrics.edsr.mae.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="metrics-legend">
+              <h4>Metrics Guide:</h4>
+              <ul>
+                <li><strong>PSNR</strong>: Peak Signal-to-Noise Ratio</li>
+                <li><strong>SSIM</strong>: Structural Similarity Index</li>
+                <li><strong>MSE</strong>: Mean Squared Error</li>
+                <li><strong>MAE</strong>: Mean Absolute Error</li>
+              </ul>
+            </div>
+          </div>
+        )}
       </main>
 
       {lightboxImage && (

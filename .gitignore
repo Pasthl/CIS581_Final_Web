@@ -11,3 +11,8 @@ frontend/.env.local
 # Storage
 backend/storage/uploads/
 backend/storage/results/
+
+# Model weights (too large for GitHub)
+backend/models/*.pth
+backend/models/*.pt
+backend/gfpgan/

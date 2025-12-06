@@ -5,6 +5,7 @@ from PIL import Image
 
 from .model import EDSR
 from .data import np2Tensor, set_channel
+from .metrics import calculate_all_metrics
 
 
 class EDSRInference:
@@ -96,16 +97,20 @@ class EDSRInference:
         return Image.fromarray(output_np, mode='RGB')
 
     @torch.no_grad()
-    def infer(self, image_path, output_path=None):
+    def infer(self, image_path, output_path=None, calculate_metrics=False, reference_image=None):
         """
         Run inference on an image
 
         Args:
             image_path: Path to input image
             output_path: Path to save output (optional)
+            calculate_metrics: Whether to calculate quality metrics (default: False)
+            reference_image: Reference image for metrics (PIL Image or path).
+                           If None and calculate_metrics=True, uses input image
 
         Returns:
-            PIL Image of the processed result
+            If calculate_metrics is False: PIL Image of the processed result
+            If calculate_metrics is True: tuple of (PIL Image, metrics dict)
         """
         # Preprocess
         input_tensor = self.preprocess(image_path)
@@ -121,19 +126,46 @@ class EDSRInference:
             output_image.save(output_path)
             print(f"Saved result to {output_path}")
 
+        # Calculate metrics if requested
+        if calculate_metrics:
+            # Determine reference image
+            if reference_image is None:
+                # Use input image as reference
+                ref_img = Image.open(image_path).convert('RGB')
+            elif isinstance(reference_image, str):
+                # Load from path
+                ref_img = Image.open(reference_image).convert('RGB')
+            else:
+                # Assume it's already a PIL Image
+                ref_img = reference_image.convert('RGB')
+
+            # Resize output to match reference for fair comparison
+            if output_image.size != ref_img.size:
+                output_resized = output_image.resize(ref_img.size, Image.LANCZOS)
+            else:
+                output_resized = output_image
+
+            # Calculate metrics
+            metrics = calculate_all_metrics(ref_img, output_resized)
+            return output_image, metrics
+
         return output_image
 
     @torch.no_grad()
-    def infer_from_pil(self, pil_image, output_path=None):
+    def infer_from_pil(self, pil_image, output_path=None, calculate_metrics=False, reference_image=None):
         """
         Run inference on a PIL Image directly
 
         Args:
             pil_image: PIL Image object
             output_path: Path to save output (optional)
+            calculate_metrics: Whether to calculate quality metrics (default: False)
+            reference_image: Reference image for metrics (PIL Image or path).
+                           If None and calculate_metrics=True, uses input image
 
         Returns:
-            PIL Image of the processed result
+            If calculate_metrics is False: PIL Image of the processed result
+            If calculate_metrics is True: tuple of (PIL Image, metrics dict)
         """
         # Convert PIL to numpy
         img_np = np.array(pil_image.convert('RGB')).astype(np.float32)
@@ -151,6 +183,29 @@ class EDSRInference:
         # Save if output path provided
         if output_path:
             output_image.save(output_path)
+
+        # Calculate metrics if requested
+        if calculate_metrics:
+            # Determine reference image
+            if reference_image is None:
+                # Use input image as reference
+                ref_img = pil_image.convert('RGB')
+            elif isinstance(reference_image, str):
+                # Load from path
+                ref_img = Image.open(reference_image).convert('RGB')
+            else:
+                # Assume it's already a PIL Image
+                ref_img = reference_image.convert('RGB')
+
+            # Resize output to match reference for fair comparison
+            if output_image.size != ref_img.size:
+                output_resized = output_image.resize(ref_img.size, Image.LANCZOS)
+            else:
+                output_resized = output_image
+
+            # Calculate metrics
+            metrics = calculate_all_metrics(ref_img, output_resized)
+            return output_image, metrics
 
         return output_image
 

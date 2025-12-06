@@ -11,6 +11,7 @@ from datetime import datetime
 from src import get_model
 from src.preprocessing import preprocess_pipeline_custom
 from src.realesrgan_inference import get_realesrgan_model
+from src.degradation import degrade_for_evaluation
 
 # Configuration
 UPLOAD_FOLDER = 'storage/uploads'
@@ -45,7 +46,7 @@ def get_edsr_model():
     if model is None:
         model_path = os.path.join('models', 'edsr_baseline_x4-6b446fab.pt')
         print("Initializing EDSR model...")
-        model = get_model(model_path=model_path, scale=4, device='cuda')
+        model = get_model(model_path=model_path, scale=4, device='cuda')  # Use CPU to avoid OOM
         print("Model ready!")
     return model
 
@@ -98,13 +99,22 @@ def denoise_image():
         file.save(input_path)
         print(f"Received image: {input_filename}")
 
+        # Check if metrics calculation is requested
+        calculate_metrics = request.form.get('calculate_metrics', 'false').lower() == 'true'
+
         # Run EDSR inference (without saving to file)
         print("Running EDSR inference...")
         start_time = datetime.now()
 
         edsr_model = get_edsr_model()
         # Use infer method without output_path to avoid saving
-        result_image = edsr_model.infer(input_path, output_path=None)
+        result = edsr_model.infer(input_path, output_path=None, calculate_metrics=calculate_metrics)
+
+        if calculate_metrics:
+            result_image, metrics = result
+        else:
+            result_image = result
+            metrics = None
 
         elapsed = (datetime.now() - start_time).total_seconds()
         print(f"Processing completed in {elapsed:.2f}s")
@@ -126,8 +136,8 @@ def denoise_image():
         except Exception as cleanup_error:
             print(f"[WARN] Failed to cleanup {input_path}: {cleanup_error}")
 
-        # Return result with base64 image data
-        return jsonify({
+        # Build response
+        response_data = {
             'success': True,
             'message': 'Image processed successfully',
             'input': {
@@ -139,7 +149,15 @@ def denoise_image():
                 'image_data': f'data:image/png;base64,{img_base64}'  # Base64 data URL
             },
             'processing_time': f"{elapsed:.2f}s"
-        })
+        }
+
+        # Add metrics if calculated
+        if metrics:
+            response_data['metrics'] = metrics
+            print(f"  PSNR: {metrics['psnr']:.2f} dB")
+            print(f"  SSIM: {metrics['ssim']:.4f}")
+
+        return jsonify(response_data)
 
     except Exception as e:
         print(f"Error processing image: {str(e)}")
@@ -178,6 +196,8 @@ def process_pipeline():
         enable_deblur = request.form.get('enable_deblur', 'true').lower() == 'true'
         enable_edsr = request.form.get('enable_edsr', 'true').lower() == 'true'
         enable_face_enhance = request.form.get('enable_face_enhance', 'false').lower() == 'true'
+        evaluation_mode = request.form.get('evaluation_mode', 'false').lower() == 'true'
+        degradation_type = request.form.get('degradation_type', 'light')  # Default: light
 
         # Save uploaded file
         file_ext = file.filename.rsplit('.', 1)[1].lower()
@@ -188,11 +208,30 @@ def process_pipeline():
 
         print(f"Processing pipeline for: {input_filename}")
         print(f"  Steps: Preprocess={enable_preprocess}, RealESRGAN={enable_deblur}, EDSR={enable_edsr}")
+        print(f"  Evaluation Mode: {evaluation_mode}")
         start_time = datetime.now()
 
         # Load original image
-        current_img = Image.open(input_path)
+        uploaded_img = Image.open(input_path)
         result = {}
+        metrics_result = {}
+
+        # Evaluation Mode: degrade the image first
+        if evaluation_mode:
+            print(f"  [Evaluation Mode] Degrading image with method: {degradation_type}")
+            ground_truth = uploaded_img  # High-quality ground truth
+            degraded_img = degrade_for_evaluation(ground_truth, degradation_type=degradation_type, scale=4)
+            current_img = degraded_img
+            result['ground_truth'] = ground_truth
+            result['degraded'] = degraded_img
+            reference_img = ground_truth  # Use ground truth for metrics
+            print(f"  [Evaluation Mode] Ground truth size: {ground_truth.size}, Degraded size: {degraded_img.size}")
+        else:
+            # Normal mode: use uploaded image as-is
+            current_img = uploaded_img
+            reference_img = uploaded_img  # Use input as reference (less meaningful)
+            result['ground_truth'] = None
+            result['degraded'] = None
 
         # Step 1: Preprocessing
         if enable_preprocess:
@@ -209,6 +248,11 @@ def process_pipeline():
             )
             current_img = preprocessed_img
             result['preprocessed'] = preprocessed_img
+
+            if evaluation_mode:
+                from src.metrics import calculate_all_metrics
+                # Compare with ground truth
+                metrics_result['preprocessed'] = calculate_all_metrics(reference_img, preprocessed_img)
         else:
             print("  [1] Preprocessing skipped")
             result['preprocessed'] = None
@@ -221,7 +265,20 @@ def process_pipeline():
                 model_path=os.path.join('models', 'RealESRGAN_x4plus.pth'),
                 scale=4, device='cuda'
             )
-            deblurred_img = realesrgan_model.infer_from_pil(current_img, face_enhance=enable_face_enhance)
+
+            deblur_result = realesrgan_model.infer_from_pil(
+                current_img,
+                face_enhance=enable_face_enhance,
+                calculate_metrics=evaluation_mode,
+                reference_image=reference_img if evaluation_mode else None
+            )
+
+            if evaluation_mode:
+                deblurred_img, deblur_metrics = deblur_result
+                metrics_result['deblurred'] = deblur_metrics
+            else:
+                deblurred_img = deblur_result
+
             current_img = deblurred_img
             result['deblurred'] = deblurred_img
         else:
@@ -232,7 +289,20 @@ def process_pipeline():
         if enable_edsr:
             print("  [3] EDSR Super-Resolution...")
             edsr_model = get_edsr_model()
-            edsr_img = edsr_model.infer_from_pil(current_img, output_path=None)
+
+            edsr_result = edsr_model.infer_from_pil(
+                current_img,
+                output_path=None,
+                calculate_metrics=evaluation_mode,
+                reference_image=reference_img if evaluation_mode else None
+            )
+
+            if evaluation_mode:
+                edsr_img, edsr_metrics = edsr_result
+                metrics_result['edsr'] = edsr_metrics
+            else:
+                edsr_img = edsr_result
+
             result['edsr'] = edsr_img
         else:
             print("  [3] EDSR skipped")
@@ -240,6 +310,12 @@ def process_pipeline():
 
         elapsed = (datetime.now() - start_time).total_seconds()
         print(f"Pipeline completed in {elapsed:.2f}s")
+
+        # Print metrics if calculated
+        if evaluation_mode and metrics_result:
+            print("Quality Metrics (vs. Ground Truth):")
+            for step, metrics in metrics_result.items():
+                print(f"  {step}: PSNR={metrics['psnr']:.2f} dB, SSIM={metrics['ssim']:.4f}")
 
         # Convert to base64
         def img_to_base64(img):
@@ -255,14 +331,24 @@ def process_pipeline():
         except Exception as e:
             print(f"Cleanup warning: {e}")
 
-        return jsonify({
+        # Build response
+        response_data = {
             'success': True,
             'message': 'Pipeline completed',
+            'evaluation_mode': evaluation_mode,
+            'ground_truth': img_to_base64(result.get('ground_truth')),
+            'degraded': img_to_base64(result.get('degraded')),
             'preprocessed': img_to_base64(result.get('preprocessed')),
             'deblurred': img_to_base64(result.get('deblurred')),
             'edsr': img_to_base64(result.get('edsr')),
             'processing_time': f"{elapsed:.2f}s"
-        })
+        }
+
+        # Add metrics if calculated
+        if evaluation_mode and metrics_result:
+            response_data['metrics'] = metrics_result
+
+        return jsonify(response_data)
 
     except Exception as e:
         print(f"Pipeline error: {str(e)}")
