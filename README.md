@@ -25,10 +25,6 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 # Install dependencies
 pip install -r requirements.txt
 
-# Download models to backend/models/
-# - edsr_baseline_x4-6b446fab.pt
-# - RealESRGAN_x4plus.pth
-
 python app.py
 ```
 
@@ -48,21 +44,36 @@ Frontend runs at http://localhost:3000
 
 ```
 CIS581_Final_Web/
-├── frontend/           # Next.js (port 3000)
-│   └── app/demo/       # Main demo page
-└── backend/            # Flask API (port 5000)
-    ├── app.py          # API server
+├── frontend/               # Next.js (port 3000)
+│   └── app/
+│       ├── page.tsx        # Home page
+│       └── demo/           # Demo page
+└── backend/                # Flask API (port 5000)
+    ├── app.py              # API server
     ├── src/
-    │   ├── inference.py           # EDSR wrapper
-    │   ├── realesrgan_inference.py # Real-ESRGAN wrapper
-    │   └── preprocessing.py       # Image preprocessing
-    └── models/         # Model weights
+    │   ├── inference.py               # EDSR inference
+    │   ├── realesrgan_inference.py    # Real-ESRGAN inference
+    │   ├── preprocessing.py           # Image preprocessing
+    │   ├── degradation.py             # Image degradation for evaluation
+    │   └── metrics.py                 # Evaluation metrics
+    ├── models/             # Model weights
+    ├── storage/            # Upload/output storage
+    └── test_*.py           # Testing scripts
 ```
 
-## API
+## API Endpoints
 
-- `POST /api/pipeline` - Process image through pipeline
+- `POST /api/pipeline` - Full enhancement pipeline
 - `POST /api/denoise` - EDSR only
+- `GET /api/images/<filename>` - Retrieve processed image
+- `POST /api/cleanup` - Clear storage
+
+## Evaluation Metrics
+
+- **PSNR** - Peak Signal-to-Noise Ratio
+- **SSIM** - Structural Similarity Index
+- **NIQE** - Natural Image Quality Evaluator (no-reference)
+- **LPIPS** - Learned Perceptual Image Patch Similarity
 
 ## Requirements
 
@@ -72,11 +83,11 @@ CIS581_Final_Web/
 
 ## Models
 
-| Model | Scale | Purpose |
-|-------|-------|---------|
-| Real-ESRGAN | 4x | Main super-resolution |
-| GFPGAN | - | Face enhancement (optional) |
-| EDSR | 4x | Post-processing |
+| Model       | Scale | Purpose                     |
+| ----------- | ----- | --------------------------- |
+| Real-ESRGAN | 4x    | Main super-resolution       |
+| GFPGAN      | -     | Face enhancement (optional) |
+| EDSR        | 4x    | Post-processing             |
 
 ## Acknowledgments
 
